@@ -161,7 +161,7 @@ export async function streamScreeningText({
   const result = streamText({
     model: gateway(model),
     prompt,
-    temperature: 0.1,
+    temperature: 0.15,
     maxOutputTokens: 400,
   });
 
