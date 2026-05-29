@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PT_Serif } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { PageMotion } from "@/app/components/page-motion";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import "./globals.css";
@@ -48,6 +49,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <NextTopLoader color="#0ea5e9" showSpinner={false} />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeToggle />
         <PageMotion className="flex-1">{children}</PageMotion>

@@ -104,54 +104,54 @@ export default async function Home() {
 
   const criteriaCountRows = currentUserId
     ? await prisma.criteria.groupBy({
-        by: ["typeCriteriaId"],
-        where: {
-          userId: currentUserId,
-        },
-        _count: {
-          _all: true,
-        },
-      })
+      by: ["typeCriteriaId"],
+      where: {
+        userId: currentUserId,
+      },
+      _count: {
+        _all: true,
+      },
+    })
     : [];
 
   const referencesCount = currentUserId
     ? await prisma.bibReference.count({
-        where: {
-          userId: currentUserId,
-        },
-      })
+      where: {
+        userId: currentUserId,
+      },
+    })
     : 0;
 
   const analyzedReferencesCount = currentUserId
     ? await prisma.result.count({
-        where: {
-          references: {
-            userId: currentUserId,
-          },
+      where: {
+        references: {
+          userId: currentUserId,
         },
-      })
+      },
+    })
     : 0;
 
   const includedResultsCount = currentUserId
     ? await prisma.result.count({
-        where: {
-          hasil: "Included",
-          references: {
-            userId: currentUserId,
-          },
+      where: {
+        hasil: "Included",
+        references: {
+          userId: currentUserId,
         },
-      })
+      },
+    })
     : 0;
 
   const excludedResultsCount = currentUserId
     ? await prisma.result.count({
-        where: {
-          hasil: "Excluded",
-          references: {
-            userId: currentUserId,
-          },
+      where: {
+        hasil: "Excluded",
+        references: {
+          userId: currentUserId,
         },
-      })
+      },
+    })
     : 0;
 
   const aiModels = getSupportedAiModels();
@@ -217,38 +217,38 @@ export default async function Home() {
               </Badge>
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                {card.logoSrc ? (
-                  <Image
-                    src={card.logoSrc}
-                    alt={`Logo ${card.nama}`}
-                    width={56}
-                    height={56}
-                    unoptimized
-                    className="h-14 w-14 rounded-xl border border-zinc-200 bg-zinc-50 object-contain p-2 dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    N/A
+                  {card.logoSrc ? (
+                    <Image
+                      src={card.logoSrc}
+                      alt={`Logo ${card.nama}`}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="h-14 w-14 rounded-xl border border-zinc-200 bg-zinc-50 object-contain p-2 dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      N/A
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold">{card.nama}</h2>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{card.deskripsi}</p>
                   </div>
-                )}
-
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold">{card.nama}</h2>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{card.deskripsi}</p>
                 </div>
-              </div>
 
-              {!card.isConfigured ? (
-                <p className="mt-4 rounded-lg border border-amber-300/60 bg-amber-100/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200">
-                  Data {card.displayName} belum ditemukan di tabel TypeCriteria.
-                </p>
-              ) : null}
+                {!card.isConfigured ? (
+                  <p className="mt-4 rounded-lg border border-amber-300/60 bg-amber-100/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200">
+                    Data {card.displayName} belum ditemukan di tabel TypeCriteria.
+                  </p>
+                ) : null}
 
-              <div className="mt-5">
-                <Button asChild variant="outline" className="border-cyan-400/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-500/40 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20">
-                  <Link href={card.route}>Kelola Criteria</Link>
-                </Button>
-              </div>
+                <div className="mt-5">
+                  <Button asChild variant="outline" className="border-cyan-400/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-500/40 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20">
+                    <Link href={card.route}>Kelola Criteria</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
