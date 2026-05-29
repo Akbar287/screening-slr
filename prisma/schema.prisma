@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement()) @map("user_id")
+  nama      String?
+  username  String   @unique @db.VarChar(128)
+  password  String   @db.VarChar(255)
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  criteria   Criteria[]
+  references BibReference[]
+
+  @@map("users")
+}
+
+model TypeCriteria {
+  id        BigInt   @id @default(autoincrement()) @map("type_criteria_id")
+  nama      String
+  deskripsi String?
+  logo      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  criteria Criteria[]
+
+  @@map("type_criteria")
+}
+
+model Criteria {
+  id        BigInt   @id @default(autoincrement()) @map("criteria_id")
+  nama      String
+  urutan    Int?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  typeCriteriaId BigInt @map("type_criteria_id")
+  userId         BigInt @map("user_id")
+
+  typeCriteria TypeCriteria @relation(fields: [typeCriteriaId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([typeCriteriaId])
+  @@map("criteria")
+}
+
+model BibReference {
+  id BigInt @id @default(autoincrement()) @map("reference_id")
+
+  userId BigInt @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  citationKey String @map("citation_key")
+  entryType   String @map("entry_type") @db.VarChar(50)
+
+  title        String?
+  year         Int?    @db.SmallInt
+  month        String? @db.VarChar(20)
+  journal      String?
+  booktitle    String?
+  publisher    String?
+  institution  String?
+  organization String?
+  school       String?
+  volume       String? @db.VarChar(50)
+  number       String? @db.VarChar(50)
+  series       String?
+  edition      String? @db.VarChar(100)
+  chapter      String? @db.VarChar(100)
+  pages        String? @db.VarChar(100)
+  address      String?
+
+  doi     String?
+  isbn    String?   @db.VarChar(50)
+  issn    String?   @db.VarChar(50)
+  url     String?
+  urldate DateTime? @db.Date
+
+  note         String?
+  abstract     String?
+  keywords     String?
+  language     String? @db.VarChar(50)
+  type         String? @db.VarChar(100)
+  howpublished String?
+  crossref     String?
+
+  eprint        String?
+  archivePrefix String? @map("archive_prefix") @db.VarChar(100)
+  primaryClass  String? @map("primary_class") @db.VarChar(100)
+  pmid          String? @db.VarChar(50)
+  pmcid         String? @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  result Result?
+
+  @@index([userId])
+  @@index([citationKey])
+  @@index([entryType])
+  @@index([year])
+  @@map("bib_references")
+}
+
+model Result {
+  id          BigInt       @id @default(autoincrement()) @map("result_id")
+  hasil       ResultStatus
+  justifikasi String       @db.Text
+  ai          String       @db.Text
+
+  referencesId BigInt       @unique @map("references_id")
+  references   BibReference @relation(fields: [referencesId], references: [id], onDelete: Cascade)
+
+  @@map("results")
+}
+
+enum ResultStatus {
+  Included
+  Excluded
+}

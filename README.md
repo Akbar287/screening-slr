@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI-Assisted Paper Screening Tool
 
-## Getting Started
+Aplikasi web yang dirancang khusus untuk membantu peneliti dalam melakukan proses *screening* literatur (Systematic Literature Review / SLR). Aplikasi ini memanfaatkan kecerdasan buatan (AI) untuk mempercepat dan mempermudah evaluasi paper berdasarkan kriteria inklusi dan eksklusi yang telah ditentukan.
 
-First, run the development server:
+## 🚀 Fitur Utama
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Manajemen Kriteria**: Definisikan *Inclusion Criteria* dan *Exclusion Criteria* sesuai dengan kebutuhan penelitian Anda.
+- **Import Referensi**: Mendukung upload file referensi dalam format `.bib` (BibTeX) yang diekspor dari database akademis (Scopus, ScienceDirect, IEEE, dll).
+- **AI-Powered Screening**: Otomatisasi evaluasi judul dan abstrak paper menggunakan AI. Sistem akan memberikan rekomendasi *Included* atau *Excluded* beserta justifikasi detail berdasarkan kriteria Anda.
+- **Analisis Hasil**: Pantau hasil *screening* secara komprehensif. Review alasan AI meloloskan atau menolak sebuah paper untuk memastikan akurasi dan validitas penelitian.
+- **Manajemen Duplikasi**: Identifikasi dan kelola referensi yang duplikat dengan mudah.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Teknologi yang Digunakan
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Aplikasi ini dibangun menggunakan *stack* modern:
+- **Framework**: [Next.js](https://nextjs.org) (App Router)
+- **Database**: PostgreSQL dengan [Prisma ORM](https://www.prisma.io)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com) & [shadcn/ui](https://ui.shadcn.com)
+- **Autentikasi**: [NextAuth.js](https://next-auth.js.org)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 💻 Cara Menjalankan Project (Development)
 
-## Learn More
+1. **Persiapan Database**
+   Pastikan PostgreSQL sudah berjalan. Konfigurasikan koneksi database di file `.env`:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/slr?schema=public"
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Install Dependensi**
+   ```bash
+   yarn install
+   # atau npm install / pnpm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Migrasi Database**
+   Jalankan migrasi Prisma untuk membuat tabel-tabel yang dibutuhkan:
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **Jalankan Server Development**
+   ```bash
+   yarn dev
+   # atau npm run dev / pnpm dev
+   ```
 
-## Deploy on Vercel
+5. **Akses Aplikasi**
+   Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📚 Alur Kerja (Workflow)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Registrasi/Login**: Buat akun atau masuk ke aplikasi.
+2. **Setup Kriteria**: Masuk ke menu **Criteria** dan tambahkan kriteria inklusi & eksklusi penelitian Anda.
+3. **Upload Referensi**: Masuk ke menu **References** -> **Manage** lalu upload file `.bib` Anda.
+4. **Jalankan Screening**: Biarkan AI membaca setiap paper dan membandingkannya dengan kriteria Anda.
+5. **Review Hasil**: Buka menu **Analysis Results** untuk melihat keputusan akhir dan justifikasi dari AI.
