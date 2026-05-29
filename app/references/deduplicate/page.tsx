@@ -18,6 +18,7 @@ import {
   detectReferenceExactDuplicatePairs,
   type DuplicatePair,
 } from "@/lib/reference-duplicates";
+import { SubmitButton } from "./submit-button";
 
 const DEFAULT_PAGE_SIZE = 10;
 const ALLOWED_PAGE_SIZES = [5, 10, 20] as const;
@@ -145,9 +146,7 @@ function PairReferenceCard({
           <input type="hidden" name="deleteReferenceId" value={current.id.toString()} />
           <input type="hidden" name="page" value={page} />
           <input type="hidden" name="pageSize" value={pageSize} />
-          <Button type="submit" variant="destructive" className="w-full">
-            Hapus
-          </Button>
+          <SubmitButton />
         </form>
         <p className="text-xs text-muted-foreground">
           Reference di card sebelah otomatis dipertahankan.
