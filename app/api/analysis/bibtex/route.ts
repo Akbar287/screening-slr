@@ -22,10 +22,17 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 900;
 
 type StartAnalysisPayload = {
   model?: string;
+};
+
+type AnalysisCounts = {
+  totalReferences: number;
+  pendingReferences: number;
+  includedResultsCount: number;
+  excludedResultsCount: number;
 };
 
 function normalizeModel(value: unknown): string {
@@ -69,6 +76,48 @@ function toResponseJob(job: ReturnType<typeof getJobById>) {
     startedAt: job.startedAt,
     updatedAt: job.updatedAt,
     finishedAt: job.finishedAt,
+  };
+}
+
+async function getAnalysisCounts(userId: bigint): Promise<AnalysisCounts> {
+  const [totalReferences, pendingReferences, includedResultsCount, excludedResultsCount] =
+    await Promise.all([
+      prisma.bibReference.count({
+        where: {
+          userId,
+        },
+      }),
+      prisma.bibReference.count({
+        where: {
+          userId,
+          result: {
+            is: null,
+          },
+        },
+      }),
+      prisma.result.count({
+        where: {
+          hasil: "Included",
+          references: {
+            userId,
+          },
+        },
+      }),
+      prisma.result.count({
+        where: {
+          hasil: "Excluded",
+          references: {
+            userId,
+          },
+        },
+      }),
+    ]);
+
+  return {
+    totalReferences,
+    pendingReferences,
+    includedResultsCount,
+    excludedResultsCount,
   };
 }
 
@@ -139,29 +188,29 @@ async function runAnalysisJob({
   userId: bigint;
   model: SupportedAiModel;
 }) {
-  const criteria = await getCriteriaContext(userId);
-
-  const references = await prisma.bibReference.findMany({
-    where: {
-      userId,
-      result: {
-        is: null,
-      },
-    },
-    orderBy: [{ id: "asc" }],
-    select: {
-      id: true,
-      citationKey: true,
-      entryType: true,
-      title: true,
-      abstract: true,
-      year: true,
-      journal: true,
-      publisher: true,
-    },
-  });
-
   try {
+    const criteria = await getCriteriaContext(userId);
+
+    const references = await prisma.bibReference.findMany({
+      where: {
+        userId,
+        result: {
+          is: null,
+        },
+      },
+      orderBy: [{ id: "asc" }],
+      select: {
+        id: true,
+        citationKey: true,
+        entryType: true,
+        title: true,
+        abstract: true,
+        year: true,
+        journal: true,
+        publisher: true,
+      },
+    });
+
     for (const reference of references) {
       let hasil: ResultStatus = ResultStatus.Excluded;
       let justifikasi = "Reference tidak dapat dianalisa karena abstract tidak tersedia.";
@@ -239,11 +288,36 @@ export async function GET(request: Request) {
   if (requestedJobId) {
     const job = getJobById(requestedJobId);
 
-    if (!job || job.userId !== userId) {
-      return NextResponse.json({ message: "Job tidak ditemukan." }, { status: 404 });
+    if (job && job.userId === userId) {
+      return NextResponse.json({ job: toResponseJob(job) });
     }
 
-    return NextResponse.json({ job: toResponseJob(job) });
+    const activeJob = getActiveJobForUser(userId);
+    const latestJob = getLatestJobForUser(userId);
+
+    if (activeJob || latestJob) {
+      return NextResponse.json({
+        message:
+          "Sesi job sebelumnya tidak ditemukan di server saat ini. Status terbaru digunakan.",
+        job: toResponseJob(activeJob ?? latestJob),
+      });
+    }
+
+    const counts = await getAnalysisCounts(currentUserId);
+
+    return NextResponse.json({
+      message:
+        counts.pendingReferences > 0
+          ? "Sesi analisa sebelumnya berakhir. Klik Analisa untuk melanjutkan references yang belum diproses."
+          : "Semua references sudah dianalisa.",
+      job: null,
+      summary: {
+        totalReferences: counts.totalReferences,
+        analyzedReferences: Math.max(0, counts.totalReferences - counts.pendingReferences),
+        includedResultsCount: counts.includedResultsCount,
+        excludedResultsCount: counts.excludedResultsCount,
+      },
+    });
   }
 
   const activeJob = getActiveJobForUser(userId);
@@ -292,38 +366,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const [totalReferences, pendingReferences, includedResultsCount, excludedResultsCount] =
-    await Promise.all([
-      prisma.bibReference.count({
-        where: {
-          userId: currentUserId,
-        },
-      }),
-      prisma.bibReference.count({
-        where: {
-          userId: currentUserId,
-          result: {
-            is: null,
-          },
-        },
-      }),
-      prisma.result.count({
-        where: {
-          hasil: "Included",
-          references: {
-            userId: currentUserId,
-          },
-        },
-      }),
-      prisma.result.count({
-        where: {
-          hasil: "Excluded",
-          references: {
-            userId: currentUserId,
-          },
-        },
-      }),
-    ]);
+  const { totalReferences, pendingReferences, includedResultsCount, excludedResultsCount } =
+    await getAnalysisCounts(currentUserId);
 
   const analyzedReferences = Math.max(0, totalReferences - pendingReferences);
 

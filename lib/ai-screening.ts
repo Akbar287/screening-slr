@@ -146,6 +146,10 @@ export async function analyzeReferenceWithAi({
     prompt,
     temperature: 0.1,
     maxOutputTokens: 400,
+    maxRetries: 1,
+    timeout: {
+      totalMs: 45_000,
+    },
   });
 
   return parseScreeningOutput(text);

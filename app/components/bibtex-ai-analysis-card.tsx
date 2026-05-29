@@ -33,6 +33,12 @@ type AnalysisJobPayload = {
 type AnalysisApiResponse = {
   message?: string;
   job: AnalysisJobPayload | null;
+  summary?: {
+    totalReferences: number;
+    analyzedReferences: number;
+    includedResultsCount: number;
+    excludedResultsCount: number;
+  };
 };
 
 type BibtexAiAnalysisCardProps = {
@@ -80,9 +86,28 @@ export function BibtexAiAnalysisCard({
   const [job, setJob] = useState<AnalysisJobPayload | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [snapshot, setSnapshot] = useState(() => ({
+    totalReferences,
+    analyzedReferences,
+    includedResultsCount,
+    excludedResultsCount,
+  }));
 
-  const pollJobStatus = useCallback(async (jobId: string) => {
-    const response = await fetch(`/api/analysis/bibtex?jobId=${encodeURIComponent(jobId)}`, {
+  const applySummary = useCallback((summary?: AnalysisApiResponse["summary"]) => {
+    if (!summary) {
+      return;
+    }
+
+    setSnapshot({
+      totalReferences: Math.max(0, summary.totalReferences),
+      analyzedReferences: Math.max(0, summary.analyzedReferences),
+      includedResultsCount: Math.max(0, summary.includedResultsCount),
+      excludedResultsCount: Math.max(0, summary.excludedResultsCount),
+    });
+  }, []);
+
+  const refreshCurrentJob = useCallback(async () => {
+    const response = await fetch("/api/analysis/bibtex", {
       method: "GET",
       cache: "no-store",
     });
@@ -92,27 +117,56 @@ export function BibtexAiAnalysisCard({
       throw new Error(data.message || "Gagal mengambil status analisa.");
     }
 
+    applySummary(data.summary);
+
     if (data.job) {
       setJob(data.job);
+      setSelectedModel(data.job.model);
+      setErrorMessage("");
+      return;
     }
-  }, []);
+
+    setJob(null);
+
+    if (data.message) {
+      setErrorMessage(data.message);
+    }
+  }, [applySummary]);
+
+  const pollJobStatus = useCallback(async (jobId: string) => {
+    const response = await fetch(`/api/analysis/bibtex?jobId=${encodeURIComponent(jobId)}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const data = (await response.json()) as AnalysisApiResponse;
+    if (!response.ok) {
+      if (response.status === 404) {
+        await refreshCurrentJob();
+        return;
+      }
+
+      throw new Error(data.message || "Gagal mengambil status analisa.");
+    }
+
+    applySummary(data.summary);
+
+    if (data.job) {
+      setJob(data.job);
+      setErrorMessage("");
+      return;
+    }
+
+    setJob(null);
+
+    if (data.message) {
+      setErrorMessage(data.message);
+    }
+  }, [applySummary, refreshCurrentJob]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
-      void (async () => {
-        const response = await fetch("/api/analysis/bibtex", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const data = (await response.json()) as AnalysisApiResponse;
-        if (!response.ok || !data.job) {
-          return;
-        }
-
-        setJob(data.job);
-        setSelectedModel(data.job.model);
-      })().catch(() => {
+      void refreshCurrentJob().catch(() => {
         // Initial status request is best-effort.
       });
     }, 0);
@@ -120,7 +174,7 @@ export function BibtexAiAnalysisCard({
     return () => {
       window.clearTimeout(timerId);
     };
-  }, []);
+  }, [refreshCurrentJob]);
 
   useEffect(() => {
     if (!job || job.status !== "running") {
@@ -164,6 +218,8 @@ export function BibtexAiAnalysisCard({
         throw new Error(data.message || "Gagal memulai analisa.");
       }
 
+      applySummary(data.summary);
+
       if (data.job) {
         setJob(data.job);
       }
@@ -176,34 +232,47 @@ export function BibtexAiAnalysisCard({
   }
 
   const isRunning = job?.status === "running";
+  const totalReferencesForDisplay = snapshot.totalReferences;
   const analyzedFromSnapshot = Math.max(
     0,
-    Math.min(totalReferences, analyzedReferences),
+    Math.min(totalReferencesForDisplay, snapshot.analyzedReferences),
   );
   const jobStartProcessed = job?.startProcessed ?? analyzedFromSnapshot;
   const analyzedCountForDisplay = job
     ? Math.max(
       0,
-      Math.min(totalReferences, jobStartProcessed + job.processed),
+      Math.min(totalReferencesForDisplay, jobStartProcessed + job.processed),
     )
     : analyzedFromSnapshot;
   const includedCount = job
-    ? Math.max(0, Math.min(totalReferences, (job.startIncluded ?? includedResultsCount) + job.included))
-    : includedResultsCount;
+    ? Math.max(
+      0,
+      Math.min(
+        totalReferencesForDisplay,
+        (job.startIncluded ?? snapshot.includedResultsCount) + job.included,
+      ),
+    )
+    : snapshot.includedResultsCount;
   const excludedCount = job
-    ? Math.max(0, Math.min(totalReferences, (job.startExcluded ?? excludedResultsCount) + job.excluded))
-    : excludedResultsCount;
+    ? Math.max(
+      0,
+      Math.min(
+        totalReferencesForDisplay,
+        (job.startExcluded ?? snapshot.excludedResultsCount) + job.excluded,
+      ),
+    )
+    : snapshot.excludedResultsCount;
   const pendingCountForDisplay = Math.max(
     0,
-    totalReferences - analyzedCountForDisplay,
+    totalReferencesForDisplay - analyzedCountForDisplay,
   );
   const progress = useMemo(() => {
-    if (totalReferences <= 0) {
+    if (totalReferencesForDisplay <= 0) {
       return 0;
     }
 
-    return Math.min(100, Math.round((analyzedCountForDisplay / totalReferences) * 100));
-  }, [analyzedCountForDisplay, totalReferences]);
+    return Math.min(100, Math.round((analyzedCountForDisplay / totalReferencesForDisplay) * 100));
+  }, [analyzedCountForDisplay, totalReferencesForDisplay]);
 
   return (
     <motion.section
@@ -256,7 +325,7 @@ export function BibtexAiAnalysisCard({
               <Button
                 type="button"
                 onClick={() => void startAnalysis()}
-                disabled={isRunning || isStarting || totalReferences === 0}
+                disabled={isRunning || isStarting || totalReferencesForDisplay === 0}
                 className="h-10 min-w-32"
               >
                 {isStarting ? (
@@ -275,7 +344,7 @@ export function BibtexAiAnalysisCard({
 
           <div className="space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline">Total: {totalReferences}</Badge>
+              <Badge variant="outline">Total: {totalReferencesForDisplay}</Badge>
               <Badge
                 variant="outline"
                 className="border-emerald-300/70 text-emerald-700 dark:border-emerald-500/40 dark:text-emerald-300"
@@ -293,7 +362,7 @@ export function BibtexAiAnalysisCard({
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">Progress</span>
               <span className="text-muted-foreground">
-                {analyzedCountForDisplay}/{totalReferences}
+                {analyzedCountForDisplay}/{totalReferencesForDisplay}
               </span>
             </div>
 
@@ -369,7 +438,7 @@ export function BibtexAiAnalysisCard({
             ) : null}
           </AnimatePresence>
 
-          {totalReferences === 0 ? (
+          {totalReferencesForDisplay === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
               Belum ada data references untuk dianalisa.
             </p>
