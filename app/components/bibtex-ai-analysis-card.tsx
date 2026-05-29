@@ -189,6 +189,22 @@ export function BibtexAiAnalysisCard({
   const isRunning = job?.status === "running";
   const includedCount = job ? job.included : includedResultsCount;
   const excludedCount = job ? job.excluded : excludedResultsCount;
+  const analyzedFromSnapshot = Math.max(
+    0,
+    Math.min(totalReferences, analyzedReferences),
+  );
+  const analyzedFromRunningJob = job
+    ? Math.max(
+      0,
+      Math.min(totalReferences, totalReferences - job.total + job.processed),
+    )
+    : analyzedFromSnapshot;
+  const analyzedCountForDisplay =
+    job && job.status === "running" ? analyzedFromRunningJob : analyzedFromSnapshot;
+  const pendingCountForDisplay = Math.max(
+    0,
+    totalReferences - analyzedCountForDisplay,
+  );
 
   return (
     <motion.section
@@ -259,10 +275,26 @@ export function BibtexAiAnalysisCard({
           </div>
 
           <div className="space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="outline">Total: {totalReferences}</Badge>
+              <Badge
+                variant="outline"
+                className="border-emerald-300/70 text-emerald-700 dark:border-emerald-500/40 dark:text-emerald-300"
+              >
+                Sudah dianalisa: {analyzedCountForDisplay}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-amber-300/70 text-amber-700 dark:border-amber-500/40 dark:text-amber-300"
+              >
+                Belum dianalisa: {pendingCountForDisplay}
+              </Badge>
+            </div>
+
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">Progress</span>
               <span className="text-muted-foreground">
-                {job ? `${job.processed}/${job.total}` : `${analyzedReferences}/${totalReferences}`}
+                {job ? `${job.processed}/${job.total}` : `${analyzedCountForDisplay}/${totalReferences}`}
               </span>
             </div>
 

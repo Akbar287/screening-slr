@@ -141,6 +141,9 @@ async function runAnalysisJob({
   const references = await prisma.bibReference.findMany({
     where: {
       userId,
+      result: {
+        is: null,
+      },
     },
     orderBy: [{ id: "asc" }],
     select: {
@@ -289,6 +292,9 @@ export async function POST(request: Request) {
   const totalReferences = await prisma.bibReference.count({
     where: {
       userId: currentUserId,
+      result: {
+        is: null,
+      },
     },
   });
 
