@@ -57,6 +57,9 @@ function toResponseJob(job: ReturnType<typeof getJobById>) {
     jobId: job.id,
     model: job.model,
     status: job.status,
+    startProcessed: job.startProcessed ?? 0,
+    startIncluded: job.startIncluded ?? 0,
+    startExcluded: job.startExcluded ?? 0,
     total: job.total,
     processed: job.processed,
     included: job.included,
@@ -289,19 +292,48 @@ export async function POST(request: Request) {
     );
   }
 
-  const totalReferences = await prisma.bibReference.count({
-    where: {
-      userId: currentUserId,
-      result: {
-        is: null,
-      },
-    },
-  });
+  const [totalReferences, pendingReferences, includedResultsCount, excludedResultsCount] =
+    await Promise.all([
+      prisma.bibReference.count({
+        where: {
+          userId: currentUserId,
+        },
+      }),
+      prisma.bibReference.count({
+        where: {
+          userId: currentUserId,
+          result: {
+            is: null,
+          },
+        },
+      }),
+      prisma.result.count({
+        where: {
+          hasil: "Included",
+          references: {
+            userId: currentUserId,
+          },
+        },
+      }),
+      prisma.result.count({
+        where: {
+          hasil: "Excluded",
+          references: {
+            userId: currentUserId,
+          },
+        },
+      }),
+    ]);
+
+  const analyzedReferences = Math.max(0, totalReferences - pendingReferences);
 
   const job = createJob({
     userId,
     model: modelName,
-    total: totalReferences,
+    startProcessed: analyzedReferences,
+    startIncluded: includedResultsCount,
+    startExcluded: excludedResultsCount,
+    total: pendingReferences,
   });
 
   after(async () => {

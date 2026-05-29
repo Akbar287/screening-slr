@@ -8,6 +8,9 @@ export type BibtexAnalysisJob = {
   userId: string;
   model: SupportedAiModel;
   status: AnalysisJobStatus;
+  startProcessed: number;
+  startIncluded: number;
+  startExcluded: number;
   total: number;
   processed: number;
   included: number;
@@ -88,10 +91,16 @@ export function getLatestJobForUser(userId: string): BibtexAnalysisJob | null {
 export function createJob({
   userId,
   model,
+  startProcessed,
+  startIncluded,
+  startExcluded,
   total,
 }: {
   userId: string;
   model: SupportedAiModel;
+  startProcessed: number;
+  startIncluded: number;
+  startExcluded: number;
   total: number;
 }): BibtexAnalysisJob {
   const store = getStore();
@@ -104,6 +113,9 @@ export function createJob({
     userId,
     model,
     status: "running",
+    startProcessed: Math.max(0, startProcessed),
+    startIncluded: Math.max(0, startIncluded),
+    startExcluded: Math.max(0, startExcluded),
     total,
     processed: 0,
     included: 0,

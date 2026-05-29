@@ -16,6 +16,9 @@ type AnalysisJobPayload = {
   jobId: string;
   model: SupportedAiModel;
   status: JobStatus;
+  startProcessed: number;
+  startIncluded: number;
+  startExcluded: number;
   total: number;
   processed: number;
   included: number;
@@ -137,20 +140,6 @@ export function BibtexAiAnalysisCard({
     };
   }, [job, pollJobStatus]);
 
-  const progress = useMemo(() => {
-    if (!job) {
-      return analyzedReferences > 0 && totalReferences > 0
-        ? Math.round((analyzedReferences / totalReferences) * 100)
-        : 0;
-    }
-
-    if (job.total === 0) {
-      return job.status === "completed" ? 100 : 0;
-    }
-
-    return Math.min(100, Math.round((job.processed / job.total) * 100));
-  }, [analyzedReferences, job, totalReferences]);
-
   async function startAnalysis() {
     setIsStarting(true);
     setErrorMessage("");
@@ -187,24 +176,34 @@ export function BibtexAiAnalysisCard({
   }
 
   const isRunning = job?.status === "running";
-  const includedCount = job ? job.included : includedResultsCount;
-  const excludedCount = job ? job.excluded : excludedResultsCount;
   const analyzedFromSnapshot = Math.max(
     0,
     Math.min(totalReferences, analyzedReferences),
   );
-  const analyzedFromRunningJob = job
+  const jobStartProcessed = job?.startProcessed ?? analyzedFromSnapshot;
+  const analyzedCountForDisplay = job
     ? Math.max(
       0,
-      Math.min(totalReferences, totalReferences - job.total + job.processed),
+      Math.min(totalReferences, jobStartProcessed + job.processed),
     )
     : analyzedFromSnapshot;
-  const analyzedCountForDisplay =
-    job && job.status === "running" ? analyzedFromRunningJob : analyzedFromSnapshot;
+  const includedCount = job
+    ? Math.max(0, Math.min(totalReferences, (job.startIncluded ?? includedResultsCount) + job.included))
+    : includedResultsCount;
+  const excludedCount = job
+    ? Math.max(0, Math.min(totalReferences, (job.startExcluded ?? excludedResultsCount) + job.excluded))
+    : excludedResultsCount;
   const pendingCountForDisplay = Math.max(
     0,
     totalReferences - analyzedCountForDisplay,
   );
+  const progress = useMemo(() => {
+    if (totalReferences <= 0) {
+      return 0;
+    }
+
+    return Math.min(100, Math.round((analyzedCountForDisplay / totalReferences) * 100));
+  }, [analyzedCountForDisplay, totalReferences]);
 
   return (
     <motion.section
@@ -294,7 +293,7 @@ export function BibtexAiAnalysisCard({
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">Progress</span>
               <span className="text-muted-foreground">
-                {job ? `${job.processed}/${job.total}` : `${analyzedCountForDisplay}/${totalReferences}`}
+                {analyzedCountForDisplay}/{totalReferences}
               </span>
             </div>
 
