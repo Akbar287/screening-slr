@@ -161,6 +161,7 @@ async function getCriteriaContext(userId: bigint): Promise<ScreeningCriteriaCont
     },
     orderBy: [{ urutan: "asc" }, { id: "asc" }],
     select: {
+      id: true,
       nama: true,
       typeCriteriaId: true,
     },
@@ -172,10 +173,16 @@ async function getCriteriaContext(userId: bigint): Promise<ScreeningCriteriaCont
   return {
     inclusionCriteria: criteriaRows
       .filter((item) => (inclusionId ? item.typeCriteriaId === inclusionId : false))
-      .map((item) => item.nama),
+      .map((item) => ({
+        criteriaId: item.id.toString(),
+        nama: item.nama,
+      })),
     exclusionCriteria: criteriaRows
       .filter((item) => (exclusionId ? item.typeCriteriaId === exclusionId : false))
-      .map((item) => item.nama),
+      .map((item) => ({
+        criteriaId: item.id.toString(),
+        nama: item.nama,
+      })),
   };
 }
 
@@ -190,6 +197,7 @@ async function runAnalysisJob({
 }) {
   try {
     const criteria = await getCriteriaContext(userId);
+    const allCriteria = [...criteria.inclusionCriteria, ...criteria.exclusionCriteria];
 
     const references = await prisma.bibReference.findMany({
       where: {
@@ -215,6 +223,9 @@ async function runAnalysisJob({
       let hasil: ResultStatus = ResultStatus.Excluded;
       let justifikasi = "Reference tidak dapat dianalisa karena abstract tidak tersedia.";
       let isError = false;
+      const assessmentMap = new Map<string, boolean>(
+        allCriteria.map((item) => [item.criteriaId, false]),
+      );
 
       if (reference.abstract?.trim()) {
         try {
@@ -234,6 +245,14 @@ async function runAnalysisJob({
 
           hasil = parsed.hasil;
           justifikasi = parsed.justifikasi;
+
+          for (const assessment of parsed.criteriaAssessments) {
+            if (!assessmentMap.has(assessment.criteriaId)) {
+              continue;
+            }
+
+            assessmentMap.set(assessment.criteriaId, assessment.hasil);
+          }
         } catch (error) {
           isError = true;
           const message =
@@ -243,7 +262,7 @@ async function runAnalysisJob({
         }
       }
 
-      await prisma.result.upsert({
+      const savedResult = await prisma.result.upsert({
         where: {
           referencesId: reference.id,
         },
@@ -258,7 +277,45 @@ async function runAnalysisJob({
           justifikasi,
           ai: model,
         },
+        select: {
+          id: true,
+        },
       });
+
+      const resultCriteriaRows = allCriteria
+        .map((item) => {
+          try {
+            return {
+              resultId: savedResult.id,
+              criteriaId: BigInt(item.criteriaId),
+              hasil: assessmentMap.get(item.criteriaId) === true,
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((item): item is { resultId: bigint; criteriaId: bigint; hasil: boolean } =>
+          item !== null,
+        );
+
+      if (resultCriteriaRows.length > 0) {
+        await prisma.$transaction([
+          prisma.resultCriteria.deleteMany({
+            where: {
+              resultId: savedResult.id,
+            },
+          }),
+          prisma.resultCriteria.createMany({
+            data: resultCriteriaRows,
+          }),
+        ]);
+      } else {
+        await prisma.resultCriteria.deleteMany({
+          where: {
+            resultId: savedResult.id,
+          },
+        });
+      }
 
       updateJobProgress({
         jobId,

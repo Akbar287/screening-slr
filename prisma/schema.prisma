@@ -34,15 +34,17 @@ model TypeCriteria {
 }
 
 model Criteria {
-  id             BigInt       @id @default(autoincrement()) @map("criteria_id")
-  nama           String
-  urutan         Int?
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  typeCriteriaId BigInt       @map("type_criteria_id")
-  userId         BigInt       @map("user_id")
-  typeCriteria   TypeCriteria @relation(fields: [typeCriteriaId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     BigInt                   @id @default(autoincrement()) @map("criteria_id")
+  nama                   String
+  urutan                 Int?
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  typeCriteriaId         BigInt                   @map("type_criteria_id")
+  userId                 BigInt                   @map("user_id")
+  typeCriteria           TypeCriteria             @relation(fields: [typeCriteriaId], references: [id], onDelete: Cascade)
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resultCriteria         ResultCriteria[]
+  resultFullTextCriteria ResultFullTextCriteria[]
 
   @@index([userId])
   @@index([typeCriteriaId])
@@ -100,12 +102,14 @@ model BibReference {
 }
 
 model Result {
-  id           BigInt       @id @default(autoincrement()) @map("result_id")
-  hasil        ResultStatus
-  justifikasi  String
-  ai           String
-  referencesId BigInt       @unique @map("references_id")
-  references   BibReference @relation(fields: [referencesId], references: [id], onDelete: Cascade)
+  id             BigInt           @id @default(autoincrement()) @map("result_id")
+  hasil          ResultStatus
+  justifikasi    String
+  ai             String
+  referencesId   BigInt           @unique @map("references_id")
+  references     BibReference     @relation(fields: [referencesId], references: [id], onDelete: Cascade)
+  resultCriteria ResultCriteria[]
+  fullText       FullText[]
 
   @@map("results")
 }
@@ -113,4 +117,60 @@ model Result {
 enum ResultStatus {
   Included
   Excluded
+}
+
+model ResultCriteria {
+  id         BigInt   @id @default(autoincrement()) @map("result_criteria_id")
+  criteriaId BigInt   @map("criteria_id")
+  resultId   BigInt   @map("result_id")
+  hasil      Boolean  @default(false)
+  result     Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  criteria   Criteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@map("result_criteria")
+}
+
+model FullText {
+  id             BigInt           @id @default(autoincrement()) @map("full_text_id")
+  resultId       BigInt           @map("result_id")
+  namaFile       String           @map("nama_file")
+  fileMd         Bytes            @map("file_md")
+  filePdf        Bytes            @map("file_pdf")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  result         Result           @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  resultFullText ResultFullText[]
+
+  @@index([resultId])
+  @@map("full_text")
+}
+
+model ResultFullText {
+  id                     BigInt                   @id @default(autoincrement()) @map("result_full_text_id")
+  fullTextId             BigInt                   @map("full_text_id")
+  hasil                  ResultStatus             @default(Excluded)
+  justifikasi            String                   @default("")
+  ai                     String                   @default("")
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  fullText               FullText                 @relation(fields: [fullTextId], references: [id], onDelete: Cascade)
+  resultFullTextCriteria ResultFullTextCriteria[]
+
+  @@index([fullTextId])
+  @@map("result_full_text")
+}
+
+model ResultFullTextCriteria {
+  id               BigInt         @id @default(autoincrement()) @map("result_full_text_criteria_id")
+  resultFullTextId BigInt         @map("result_full_text_id")
+  criteriaId       BigInt         @map("criteria_id")
+  result           Boolean        @default(false)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resultFullText   ResultFullText @relation(fields: [resultFullTextId], references: [id], onDelete: Cascade)
+  criteria         Criteria       @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@index([resultFullTextId])
+  @@index([criteriaId])
+  @@map("result_full_text_criteria")
 }

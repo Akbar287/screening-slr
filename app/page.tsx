@@ -2,7 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { BibtexAiAnalysisCard } from "@/app/components/bibtex-ai-analysis-card";
+import { FullTextAiAnalysisCard } from "@/app/components/full-text-ai-analysis-card";
 import { PageMotion } from "@/app/components/page-motion";
+import { ResetDataButton } from "@/app/components/reset-data-button";
 import { SignOutButton } from "@/app/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import {
   CRITERIA_KIND_ORDER,
   matchesCriteriaAlias,
 } from "@/lib/criteria-kind";
-import { getSupportedAiModels } from "@/lib/ai-models";
+import { getPdfCapableAiModels, getSupportedAiModels } from "@/lib/ai-models";
 import { prisma } from "@/lib/prisma";
 
 function toSvgBase64DataUri(logo: string | null | undefined): string | null {
@@ -154,8 +156,69 @@ export default async function Home() {
     })
     : 0;
 
+  const fullTextFileCount = currentUserId
+    ? await prisma.fullText.count({
+      where: {
+        result: {
+          hasil: "Included",
+          references: {
+            userId: currentUserId,
+          },
+        },
+      },
+    })
+    : 0;
+
+  const fullTextAnalyzedReferencesCount = currentUserId
+    ? await prisma.fullText.count({
+      where: {
+        result: {
+          hasil: "Included",
+          references: {
+            userId: currentUserId,
+          },
+        },
+        resultFullText: {
+          some: {},
+        },
+      },
+    })
+    : 0;
+
+  const fullTextIncludedResultsCount = currentUserId
+    ? await prisma.resultFullText.count({
+      where: {
+        hasil: "Included",
+        fullText: {
+          result: {
+            references: {
+              userId: currentUserId,
+            },
+          },
+        },
+      },
+    })
+    : 0;
+
+  const fullTextExcludedResultsCount = currentUserId
+    ? await prisma.resultFullText.count({
+      where: {
+        hasil: "Excluded",
+        fullText: {
+          result: {
+            references: {
+              userId: currentUserId,
+            },
+          },
+        },
+      },
+    })
+    : 0;
+
   const aiModels = getSupportedAiModels();
   const defaultAiModel = aiModels[0] ?? "openai/gpt-5.5";
+  const fullTextAiModels = getPdfCapableAiModels();
+  const defaultFullTextAiModel = fullTextAiModels[0] ?? "openai/gpt-5.4";
 
   const criteriaCountByTypeId = new Map(
     criteriaCountRows.map((row) => [row.typeCriteriaId.toString(), row._count._all]),
@@ -201,81 +264,104 @@ export default async function Home() {
                   Kamu sudah login. Lanjutkan proses screening referensi dari dashboard ini.
                 </CardDescription>
               </div>
-              <SignOutButton />
+              <div className="flex items-center gap-2">
+                <ResetDataButton />
+                <SignOutButton />
+              </div>
             </CardHeader>
           </Card>
         </PageMotion>
 
-        <section className="grid gap-4 md:grid-cols-2">
-          {criteriaCards.map((card) => (
-            <Card
-              key={card.nama}
-              className="relative border-border/70 bg-card/95 shadow-sm"
-            >
-              <Badge variant="outline" className="absolute right-4 top-4 border-cyan-300/70 bg-cyan-100 text-cyan-800 dark:border-cyan-500/50 dark:bg-cyan-500/20 dark:text-cyan-200">
-                {card.criteriaCount} Criteria
-              </Badge>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  {card.logoSrc ? (
-                    <Image
-                      src={card.logoSrc}
-                      alt={`Logo ${card.nama}`}
-                      width={56}
-                      height={56}
-                      unoptimized
-                      className="h-14 w-14 rounded-xl border border-zinc-200 bg-zinc-50 object-contain p-2 dark:border-zinc-700 dark:bg-zinc-800"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                      N/A
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <h2 className="text-xl font-bold">{card.nama}</h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{card.deskripsi}</p>
-                  </div>
-                </div>
-
-                {!card.isConfigured ? (
-                  <p className="mt-4 rounded-lg border border-amber-300/60 bg-amber-100/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200">
-                    Data {card.displayName} belum ditemukan di tabel TypeCriteria.
-                  </p>
-                ) : null}
-
-                <div className="mt-5">
-                  <Button asChild variant="outline" className="border-cyan-400/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-500/40 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20">
-                    <Link href={card.route}>Kelola Criteria</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
-        <section>
-          <Card className="relative border-border/70 bg-card/95 shadow-sm">
-            <Badge variant="outline" className="absolute right-4 top-4 border-emerald-300/70 bg-emerald-100 text-emerald-800 dark:border-emerald-500/50 dark:bg-emerald-500/20 dark:text-emerald-200">
-              {referencesCount} References
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <Badge variant="secondary" className="uppercase tracking-[0.15em]">
+              Section 1
             </Badge>
+            <h2 className="text-2xl font-bold">CRUD Data</h2>
+            <p className="text-sm text-muted-foreground">
+              Kelola data kriteria dan referensi dasar sebelum proses analisa.
+            </p>
+          </div>
 
-            <CardContent className="space-y-2 p-6">
-              <h2 className="text-xl font-bold">Bib References</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Kelola daftar referensi dan upload file BibTeX (`.bib`) untuk impor otomatis.
-              </p>
-            </CardContent>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {criteriaCards.map((card) => (
+              <Card
+                key={card.nama}
+                className="relative border-border/70 bg-card/95 shadow-sm"
+              >
+                <Badge variant="outline" className="absolute right-4 top-4 border-cyan-300/70 bg-cyan-100 text-cyan-800 dark:border-cyan-500/50 dark:bg-cyan-500/20 dark:text-cyan-200">
+                  {card.criteriaCount} Criteria
+                </Badge>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    {card.logoSrc ? (
+                      <Image
+                        src={card.logoSrc}
+                        alt={`Logo ${card.nama}`}
+                        width={56}
+                        height={56}
+                        unoptimized
+                        className="h-14 w-14 rounded-xl border border-zinc-200 bg-zinc-50 object-contain p-2 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        N/A
+                      </div>
+                    )}
 
-            <div className="px-6 pb-6">
-              <Button asChild variant="outline" className="border-emerald-400/60 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20">
-                <Link href="/references">Kelola References</Link>
-              </Button>
-            </div>
-          </Card>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold">{card.nama}</h3>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{card.deskripsi}</p>
+                    </div>
+                  </div>
+
+                  {!card.isConfigured ? (
+                    <p className="mt-4 rounded-lg border border-amber-300/60 bg-amber-100/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200">
+                      Data {card.displayName} belum ditemukan di tabel TypeCriteria.
+                    </p>
+                  ) : null}
+
+                  <div className="mt-5">
+                    <Button asChild variant="outline" className="border-cyan-400/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-500/40 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20">
+                      <Link href={card.route}>Kelola Criteria</Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            <Card className="relative border-border/70 bg-card/95 shadow-sm">
+              <Badge variant="outline" className="absolute right-4 top-4 border-emerald-300/70 bg-emerald-100 text-emerald-800 dark:border-emerald-500/50 dark:bg-emerald-500/20 dark:text-emerald-200">
+                {referencesCount} References
+              </Badge>
+
+              <CardContent className="space-y-2 p-6">
+                <h3 className="text-xl font-bold">Bib References</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Kelola daftar referensi dan upload file BibTeX (`.bib`) untuk impor otomatis.
+                </p>
+              </CardContent>
+
+              <div className="px-6 pb-6">
+                <Button asChild variant="outline" className="border-emerald-400/60 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20">
+                  <Link href="/references">Kelola References</Link>
+                </Button>
+              </div>
+            </Card>
+          </div>
         </section>
 
-        <section>
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <Badge variant="secondary" className="uppercase tracking-[0.15em]">
+              Section 2
+            </Badge>
+            <h2 className="text-2xl font-bold">Analisa Abstrak dan Judul</h2>
+            <p className="text-sm text-muted-foreground">
+              Screening otomatis tahap awal berdasarkan abstract dan title references.
+            </p>
+          </div>
+
           <BibtexAiAnalysisCard
             models={aiModels}
             defaultModel={defaultAiModel}
@@ -284,6 +370,50 @@ export default async function Home() {
             includedResultsCount={includedResultsCount}
             excludedResultsCount={excludedResultsCount}
           />
+        </section>
+
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <Badge variant="secondary" className="uppercase tracking-[0.15em]">
+              Section 3
+            </Badge>
+            <h2 className="text-2xl font-bold">Analisa Full-Text</h2>
+            <p className="text-sm text-muted-foreground">
+              Screening lanjutan berdasarkan dokumen PDF full-text beserta evaluasi kriteria.
+            </p>
+          </div>
+
+          <FullTextAiAnalysisCard
+            models={fullTextAiModels}
+            defaultModel={defaultFullTextAiModel}
+            totalReferences={fullTextFileCount}
+            analyzedReferences={fullTextAnalyzedReferencesCount}
+            includedResultsCount={fullTextIncludedResultsCount}
+            excludedResultsCount={fullTextExcludedResultsCount}
+          />
+        </section>
+
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <Badge variant="secondary" className="uppercase tracking-[0.15em]">
+              Section 4
+            </Badge>
+            <h2 className="text-2xl font-bold">Quality Asessmen</h2>
+            <p className="text-sm text-muted-foreground">
+              Section ini belum tersedia dan akan dibuat pada tahap berikutnya.
+            </p>
+          </div>
+
+          <Card className="border-border/70 bg-card/95 shadow-sm">
+            <CardContent className="space-y-3 p-6">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Modul Quality Asessmen akan berisi proses penilaian kualitas studi terpilih.
+              </p>
+              <Button type="button" variant="outline" disabled>
+                Segera Hadir
+              </Button>
+            </CardContent>
+          </Card>
         </section>
       </main>
     </div>

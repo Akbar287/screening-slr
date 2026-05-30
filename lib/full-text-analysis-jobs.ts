@@ -1,13 +1,13 @@
 import type { ResultStatus } from "@/generated/prisma/client";
-import type { SupportedAiModel } from "@/lib/ai-models";
+import type { PdfCapableAiModel } from "@/lib/ai-models";
 
-export type AnalysisJobStatus = "running" | "completed" | "failed";
+export type FullTextAnalysisJobStatus = "running" | "completed" | "failed" | "stopped";
 
-export type BibtexAnalysisJob = {
+export type FullTextAnalysisJob = {
   id: string;
   userId: string;
-  model: SupportedAiModel;
-  status: AnalysisJobStatus;
+  model: PdfCapableAiModel;
+  status: FullTextAnalysisJobStatus;
   startProcessed: number;
   startIncluded: number;
   startExcluded: number;
@@ -17,49 +17,50 @@ export type BibtexAnalysisJob = {
   excluded: number;
   errorCount: number;
   errorMessage: string | null;
+  stopRequested: boolean;
   startedAt: string;
   updatedAt: string;
   finishedAt: string | null;
 };
 
 type InternalStore = {
-  byId: Map<string, BibtexAnalysisJob>;
+  byId: Map<string, FullTextAnalysisJob>;
   activeByUserId: Map<string, string>;
   latestByUserId: Map<string, string>;
 };
 
 declare global {
-  var __bibtexAnalysisStore: InternalStore | undefined;
+  var __fullTextAnalysisStore: InternalStore | undefined;
 }
 
 function getStore(): InternalStore {
-  if (!globalThis.__bibtexAnalysisStore) {
-    globalThis.__bibtexAnalysisStore = {
-      byId: new Map<string, BibtexAnalysisJob>(),
+  if (!globalThis.__fullTextAnalysisStore) {
+    globalThis.__fullTextAnalysisStore = {
+      byId: new Map<string, FullTextAnalysisJob>(),
       activeByUserId: new Map<string, string>(),
       latestByUserId: new Map<string, string>(),
     };
   }
 
-  return globalThis.__bibtexAnalysisStore;
+  return globalThis.__fullTextAnalysisStore;
 }
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-function cloneJob(job: BibtexAnalysisJob): BibtexAnalysisJob {
+function cloneJob(job: FullTextAnalysisJob): FullTextAnalysisJob {
   return {
     ...job,
   };
 }
 
-export function getJobById(jobId: string): BibtexAnalysisJob | null {
+export function getJobById(jobId: string): FullTextAnalysisJob | null {
   const job = getStore().byId.get(jobId);
   return job ? cloneJob(job) : null;
 }
 
-export function getActiveJobForUser(userId: string): BibtexAnalysisJob | null {
+export function getActiveJobForUser(userId: string): FullTextAnalysisJob | null {
   const store = getStore();
   const activeJobId = store.activeByUserId.get(userId);
 
@@ -76,7 +77,7 @@ export function getActiveJobForUser(userId: string): BibtexAnalysisJob | null {
   return cloneJob(job);
 }
 
-export function getLatestJobForUser(userId: string): BibtexAnalysisJob | null {
+export function getLatestJobForUser(userId: string): FullTextAnalysisJob | null {
   const store = getStore();
   const latestJobId = store.latestByUserId.get(userId);
 
@@ -97,18 +98,18 @@ export function createJob({
   total,
 }: {
   userId: string;
-  model: SupportedAiModel;
+  model: PdfCapableAiModel;
   startProcessed: number;
   startIncluded: number;
   startExcluded: number;
   total: number;
-}): BibtexAnalysisJob {
+}): FullTextAnalysisJob {
   const store = getStore();
   const now = nowIso();
   const randomPart = Math.random().toString(36).slice(2, 10);
-  const jobId = `job_${Date.now()}_${randomPart}`;
+  const jobId = `fulltext_job_${Date.now()}_${randomPart}`;
 
-  const job: BibtexAnalysisJob = {
+  const job: FullTextAnalysisJob = {
     id: jobId,
     userId,
     model,
@@ -116,12 +117,13 @@ export function createJob({
     startProcessed: Math.max(0, startProcessed),
     startIncluded: Math.max(0, startIncluded),
     startExcluded: Math.max(0, startExcluded),
-    total,
+    total: Math.max(0, total),
     processed: 0,
     included: 0,
     excluded: 0,
     errorCount: 0,
     errorMessage: null,
+    stopRequested: false,
     startedAt: now,
     updatedAt: now,
     finishedAt: null,
@@ -134,6 +136,25 @@ export function createJob({
   return cloneJob(job);
 }
 
+export function requestStopJob({
+  jobId,
+  userId,
+}: {
+  jobId: string;
+  userId: string;
+}): FullTextAnalysisJob | null {
+  const store = getStore();
+  const current = store.byId.get(jobId);
+
+  if (!current || current.userId !== userId || current.status !== "running") {
+    return current ? cloneJob(current) : null;
+  }
+
+  current.stopRequested = true;
+  current.updatedAt = nowIso();
+  return cloneJob(current);
+}
+
 export function updateJobProgress({
   jobId,
   hasil,
@@ -142,7 +163,7 @@ export function updateJobProgress({
   jobId: string;
   hasil: ResultStatus;
   isError?: boolean;
-}): BibtexAnalysisJob | null {
+}): FullTextAnalysisJob | null {
   const store = getStore();
   const current = store.byId.get(jobId);
 
@@ -166,7 +187,28 @@ export function updateJobProgress({
   return cloneJob(current);
 }
 
-export function completeJob(jobId: string): BibtexAnalysisJob | null {
+export function markStopped(jobId: string): FullTextAnalysisJob | null {
+  const store = getStore();
+  const current = store.byId.get(jobId);
+
+  if (!current) {
+    return null;
+  }
+
+  current.status = "stopped";
+  current.errorMessage = "Analisa dihentikan oleh user.";
+  current.finishedAt = nowIso();
+  current.updatedAt = current.finishedAt;
+
+  const activeJobId = store.activeByUserId.get(current.userId);
+  if (activeJobId === jobId) {
+    store.activeByUserId.delete(current.userId);
+  }
+
+  return cloneJob(current);
+}
+
+export function completeJob(jobId: string): FullTextAnalysisJob | null {
   const store = getStore();
   const current = store.byId.get(jobId);
 
@@ -186,7 +228,7 @@ export function completeJob(jobId: string): BibtexAnalysisJob | null {
   return cloneJob(current);
 }
 
-export function failJob(jobId: string, errorMessage: string): BibtexAnalysisJob | null {
+export function failJob(jobId: string, errorMessage: string): FullTextAnalysisJob | null {
   const store = getStore();
   const current = store.byId.get(jobId);
 

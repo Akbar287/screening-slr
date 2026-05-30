@@ -214,6 +214,23 @@ export default async function AnalysisResultsPage({
       hasil: true,
       justifikasi: true,
       ai: true,
+      resultCriteria: {
+        orderBy: [{ criteriaId: "asc" }],
+        select: {
+          hasil: true,
+          criteria: {
+            select: {
+              id: true,
+              nama: true,
+              typeCriteria: {
+                select: {
+                  nama: true,
+                },
+              },
+            },
+          },
+        },
+      },
       references: {
         select: {
           id: true,
@@ -244,6 +261,12 @@ export default async function AnalysisResultsPage({
     justifikasi: row.justifikasi,
     ai: row.ai,
     updatedAt: row.references.updatedAt.toISOString(),
+    resultCriteria: row.resultCriteria.map((item) => ({
+      id: item.criteria.id.toString(),
+      nama: item.criteria.nama,
+      typeNama: item.criteria.typeCriteria.nama,
+      hasil: item.hasil,
+    })),
   }));
 
   return (

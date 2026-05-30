@@ -1,3 +1,10 @@
+export type AnalyzedReferenceCriteriaRow = {
+  id: string;
+  nama: string;
+  typeNama: string;
+  hasil: boolean;
+};
+
 export type AnalyzedReferenceTableRow = {
   id: string;
   referenceId: string;
@@ -12,4 +19,5 @@ export type AnalyzedReferenceTableRow = {
   justifikasi: string;
   ai: string;
   updatedAt: string;
+  resultCriteria: AnalyzedReferenceCriteriaRow[];
 };

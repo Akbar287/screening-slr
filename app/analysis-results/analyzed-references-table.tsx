@@ -65,6 +65,32 @@ function optionalText(value: string | number | null | undefined): string {
   return text.length > 0 ? text : "-";
 }
 
+function resolveCriteriaKind(typeName: string): "inclusion" | "exclusion" | "other" {
+  const normalized = typeName.trim().toLowerCase();
+
+  if (normalized.includes("inclusion") || normalized.includes("iclusion")) {
+    return "inclusion";
+  }
+
+  if (normalized.includes("exclusion")) {
+    return "exclusion";
+  }
+
+  return "other";
+}
+
+function criteriaResultLabel(hasil: boolean): string {
+  return hasil ? "Memenuhi" : "Tidak Memenuhi";
+}
+
+function criteriaResultBadgeClass(hasil: boolean): string {
+  if (hasil) {
+    return "border-emerald-300/70 bg-emerald-100 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200";
+  }
+
+  return "border-rose-300/70 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-200";
+}
+
 export function AnalyzedReferencesTable({
   rows,
   totalRows,
@@ -407,6 +433,68 @@ export function AnalyzedReferencesTable({
                   <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                     {optionalText(detailTarget.justifikasi)}
                   </p>
+                </div>
+
+                <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-3">
+                  <p className="text-sm font-medium">Evaluasi Criteria</p>
+
+                  {detailTarget.resultCriteria.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Data evaluasi per-criteria belum tersedia untuk hasil ini.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid gap-2 text-xs sm:grid-cols-2">
+                        {(() => {
+                          const inclusionItems = detailTarget.resultCriteria.filter(
+                            (item) => resolveCriteriaKind(item.typeNama) === "inclusion",
+                          );
+                          const exclusionItems = detailTarget.resultCriteria.filter(
+                            (item) => resolveCriteriaKind(item.typeNama) === "exclusion",
+                          );
+                          const inclusionMatched = inclusionItems.filter((item) => item.hasil).length;
+                          const exclusionMatched = exclusionItems.filter((item) => item.hasil).length;
+
+                          return (
+                            <>
+                              <Badge
+                                variant="outline"
+                                className="justify-center border-cyan-300/70 bg-cyan-100 text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-500/20 dark:text-cyan-200"
+                              >
+                                Inclusion: {inclusionMatched}/{inclusionItems.length} memenuhi
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="justify-center border-amber-300/70 bg-amber-100 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200"
+                              >
+                                Exclusion: {exclusionMatched}/{exclusionItems.length} memenuhi
+                              </Badge>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="space-y-2">
+                        {detailTarget.resultCriteria.map((item) => (
+                          <div
+                            key={`${detailTarget.id}-${item.id}`}
+                            className="flex flex-col gap-2 rounded-md border border-border/70 bg-background/70 p-2 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium">{item.nama}</p>
+                              <p className="text-xs text-muted-foreground">{item.typeNama}</p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={criteriaResultBadgeClass(item.hasil)}
+                            >
+                              {criteriaResultLabel(item.hasil)}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex justify-end">
