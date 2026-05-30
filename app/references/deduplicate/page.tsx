@@ -18,10 +18,20 @@ import {
   detectReferenceExactDuplicatePairs,
   type DuplicatePair,
 } from "@/lib/reference-duplicates";
+import { createPageMetadata } from "@/lib/seo";
 import { SubmitButton } from "./submit-button";
 
 const DEFAULT_PAGE_SIZE = 10;
 const ALLOWED_PAGE_SIZES = [5, 10, 20] as const;
+
+export const metadata = createPageMetadata({
+  title: "Deduplikasi References",
+  description:
+    "Validasi dan hapus references duplikat berdasarkan kesamaan DOI atau judul.",
+  path: "/references/deduplicate",
+  keywords: ["deduplicate references", "hapus duplikasi bibtex", "doi duplicate"],
+  noIndex: true,
+});
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 

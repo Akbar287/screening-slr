@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { PT_Serif } from "next/font/google";
 import { getServerSession } from "next-auth";
@@ -6,6 +5,7 @@ import NextTopLoader from "nextjs-toploader";
 import { PageMotion } from "@/app/components/page-motion";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import { authOptions } from "@/lib/auth-options";
+import { createRootMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const ptSerif = PT_Serif({
@@ -16,10 +16,7 @@ const ptSerif = PT_Serif({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "SLR Screening Platform",
-  description: "Platform screening systematic literature review",
-};
+export const metadata = createRootMetadata();
 
 const themeInitScript = `
 (() => {
@@ -51,7 +48,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${ptSerif.variable} ${ptSerif.className} h-full antialiased`}
       suppressHydrationWarning
     >

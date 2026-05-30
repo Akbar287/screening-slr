@@ -14,9 +14,19 @@ import {
 import { authOptions } from "@/lib/auth-options";
 import { getSupportedAiModels } from "@/lib/ai-models";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 const SCREENING_PAGE_SIZE = 25;
+
+export const metadata = createPageMetadata({
+  title: "Screening Interaktif Abstract",
+  description:
+    "Halaman screening interaktif untuk memutuskan Included/Excluded per reference dengan bantuan AI.",
+  path: "/screening",
+  keywords: ["screening interaktif", "manual screening", "ai abstract screening"],
+  noIndex: true,
+});
 
 type ScreeningPageProps = {
   searchParams?: Promise<SearchParamsRecord>;

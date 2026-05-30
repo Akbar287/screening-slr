@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { createPageMetadata } from "@/lib/seo";
 import { RegisterForm } from "./register-form";
+
+export const metadata = createPageMetadata({
+  title: "Register",
+  description: "Buat akun baru untuk memulai proses screening systematic literature review.",
+  path: "/register",
+  keywords: ["register slr", "daftar screening references"],
+  noIndex: true,
+});
 
 export default async function RegisterPage() {
   const session = await getServerSession(authOptions);

@@ -15,9 +15,19 @@ import {
 } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 const DEFAULT_PAGE_SIZE = 25;
 const ALLOWED_PAGE_SIZES = [25, 50, 100] as const;
+
+export const metadata = createPageMetadata({
+  title: "Hasil Analisa Abstract",
+  description:
+    "Lihat hasil analisa references: status Included/Excluded, justifikasi, dan detail AI screening.",
+  path: "/analysis-results",
+  keywords: ["analysis results", "included excluded", "ai screening result"],
+  noIndex: true,
+});
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 

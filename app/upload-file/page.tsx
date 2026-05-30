@@ -16,9 +16,19 @@ import {
 } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 const DEFAULT_PAGE_SIZE = 10;
 const ALLOWED_PAGE_SIZES = [10, 20, 40] as const;
+
+export const metadata = createPageMetadata({
+  title: "Upload Full-Text PDF",
+  description:
+    "Upload satu file PDF untuk setiap reference Included sebelum tahap analisa full-text.",
+  path: "/upload-file",
+  keywords: ["upload full-text", "pdf references", "convert pdf to markdown"],
+  noIndex: true,
+});
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 

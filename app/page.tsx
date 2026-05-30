@@ -23,6 +23,20 @@ import {
 } from "@/lib/criteria-kind";
 import { getPdfCapableAiModels, getSupportedAiModels } from "@/lib/ai-models";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Dashboard Screening SLR",
+  description:
+    "Dashboard utama untuk mengelola criteria, BibTeX references, analisa abstrak, dan analisa full-text pada proses SLR.",
+  path: "/",
+  keywords: [
+    "dashboard slr",
+    "analisa abstract ai",
+    "analisa full text references",
+    "screening interaktif",
+  ],
+});
 
 function toSvgBase64DataUri(logo: string | null | undefined): string | null {
   const trimmedLogo = logo?.trim();

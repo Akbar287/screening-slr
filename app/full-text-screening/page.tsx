@@ -18,9 +18,19 @@ import {
 import { getPdfCapableAiModels } from "@/lib/ai-models";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 const FULL_TEXT_PAGE_SIZE = 20;
+
+export const metadata = createPageMetadata({
+  title: "Screening Interaktif Full-Text",
+  description:
+    "Analisa full-text references secara interaktif dengan dukungan model AI yang kompatibel PDF.",
+  path: "/full-text-screening",
+  keywords: ["full-text screening", "pdf ai analysis", "result full text"],
+  noIndex: true,
+});
 
 type FullTextScreeningPageProps = {
   searchParams?: Promise<SearchParamsRecord>;

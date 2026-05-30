@@ -14,9 +14,19 @@ import {
 } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 const DEFAULT_PAGE_SIZE = 25;
 const ALLOWED_PAGE_SIZES = [25, 50, 100] as const;
+
+export const metadata = createPageMetadata({
+  title: "Bib References",
+  description:
+    "Tabel references BibTeX dengan pagination server-side untuk kebutuhan screening SLR.",
+  path: "/references",
+  keywords: ["bib references", "bibtex table", "references pagination"],
+  noIndex: true,
+});
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 

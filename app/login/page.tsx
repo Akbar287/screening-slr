@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { createPageMetadata } from "@/lib/seo";
 import { LoginForm } from "./login-form";
+
+export const metadata = createPageMetadata({
+  title: "Login",
+  description: "Masuk ke platform SLR Screening untuk melanjutkan proses analisa referensi.",
+  path: "/login",
+  keywords: ["login slr", "masuk screening references"],
+  noIndex: true,
+});
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);

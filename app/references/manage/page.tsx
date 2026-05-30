@@ -18,8 +18,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { authOptions } from "@/lib/auth-options";
 import { parseBibTeX } from "@/lib/bibtex";
 import { prisma } from "@/lib/prisma";
+import { createPageMetadata } from "@/lib/seo";
 
 export const maxDuration = 300;
+
+export const metadata = createPageMetadata({
+  title: "Kelola References",
+  description:
+    "Tambah reference manual dan upload file BibTeX untuk impor banyak data references.",
+  path: "/references/manage",
+  keywords: ["upload bibtex", "kelola references", "import bib file"],
+  noIndex: true,
+});
 
 type ReferenceMutationData = {
   citationKey: string;
