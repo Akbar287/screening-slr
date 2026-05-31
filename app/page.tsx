@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { BibtexAiAnalysisCard } from "@/app/components/bibtex-ai-analysis-card";
 import { FullTextAiAnalysisCard } from "@/app/components/full-text-ai-analysis-card";
 import { PageMotion } from "@/app/components/page-motion";
+import { PlanSubscriptionButton } from "@/app/components/plan-subscription-button";
 import { ResetDataButton } from "@/app/components/reset-data-button";
 import { SignOutButton } from "@/app/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,8 @@ import {
 import { getPdfCapableAiModels, getSupportedAiModels } from "@/lib/ai-models";
 import { prisma } from "@/lib/prisma";
 import { createPageMetadata } from "@/lib/seo";
+import { ensureDefaultPlans, ensureUserSubscription } from "@/lib/subscription";
+import type { Plan } from "@/generated/prisma/client";
 
 export const metadata = createPageMetadata({
   title: "Dashboard Screening SLR",
@@ -62,6 +65,21 @@ function parseSessionUserId(userId: string | null | undefined): bigint | null {
   } catch {
     return null;
   }
+}
+
+function pickDisplayPlans(plans: Plan[]): Plan[] {
+  return [...plans].sort((leftPlan, rightPlan) => {
+    const leftPrice = Number.parseFloat(leftPlan.price.toString());
+    const rightPrice = Number.parseFloat(rightPlan.price.toString());
+    const leftNumericPrice = Number.isFinite(leftPrice) ? leftPrice : Number.POSITIVE_INFINITY;
+    const rightNumericPrice = Number.isFinite(rightPrice) ? rightPrice : Number.POSITIVE_INFINITY;
+
+    if (leftNumericPrice !== rightNumericPrice) {
+      return leftNumericPrice - rightNumericPrice;
+    }
+
+    return leftPlan.name.localeCompare(rightPlan.name);
+  });
 }
 
 export default async function Home() {
@@ -108,6 +126,65 @@ export default async function Home() {
   }
 
   const currentUserId = parseSessionUserId(session.user?.id);
+  const defaultPlans = await ensureDefaultPlans();
+  const currentSubscription = currentUserId
+    ? await ensureUserSubscription({
+      userId: currentUserId,
+      plans: defaultPlans,
+    })
+    : null;
+  const currentPlanName = currentSubscription?.Plan.name ?? "Free";
+  const displayPlans = pickDisplayPlans(defaultPlans);
+  const displayPlanIds = displayPlans.map((plan) => plan.id);
+  const planFeatureRows = displayPlanIds.length > 0
+    ? await prisma.planFeature.findMany({
+      where: {
+        planId: {
+          in: displayPlanIds,
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        planId: true,
+        featureKey: true,
+        featureName: true,
+        limitValue: true,
+        limitUnit: true,
+      },
+    })
+    : [];
+
+  const featuresByPlanId = new Map<string, {
+    key: string;
+    name: string;
+    limitValue: number;
+    limitUnit: string;
+  }[]>();
+
+  for (const feature of planFeatureRows) {
+    const key = feature.planId.toString();
+    const currentFeatures = featuresByPlanId.get(key) ?? [];
+
+    currentFeatures.push({
+      key: feature.featureKey,
+      name: feature.featureName,
+      limitValue: feature.limitValue,
+      limitUnit: feature.limitUnit,
+    });
+
+    featuresByPlanId.set(key, currentFeatures);
+  }
+
+  const subscriptionPlans = displayPlans.map((plan) => ({
+    name: plan.name,
+    description: plan.description,
+    price: plan.price.toString(),
+    currency: plan.currency,
+    billingInterval: plan.billingInterval,
+    trialDays: plan.trialDays,
+    isActive: plan.isActive,
+    features: featuresByPlanId.get(plan.id.toString()) ?? [],
+  }));
 
   const typeCriteriaRows = await prisma.typeCriteria.findMany({
     select: {
@@ -275,10 +352,18 @@ export default async function Home() {
                   Halo, {session.user?.name ?? "Pengguna"}
                 </CardTitle>
                 <CardDescription>
-                  Kamu sudah login. Lanjutkan proses screening referensi dari dashboard ini.
+                  Kamu sudah login. Plan aktif kamu saat ini:{" "}
+                  <span className="font-semibold text-foreground">{currentPlanName}</span>. Lanjutkan
+                  proses screening referensi dari dashboard ini.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
+                {currentUserId ? (
+                  <PlanSubscriptionButton
+                    currentPlanName={currentPlanName}
+                    plans={subscriptionPlans}
+                  />
+                ) : null}
                 <ResetDataButton />
                 <SignOutButton />
               </div>

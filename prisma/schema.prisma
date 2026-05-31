@@ -8,17 +8,160 @@ datasource db {
 }
 
 model User {
-  id         BigInt         @id @default(autoincrement()) @map("user_id")
-  nama       String?
-  username   String         @unique @db.VarChar(128)
-  password   String         @db.VarChar(255)
-  avatar     String?
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  references BibReference[]
-  criteria   Criteria[]
+  id            BigInt         @id @default(autoincrement()) @map("user_id")
+  nama          String?
+  username      String         @unique @db.VarChar(128)
+  password      String         @db.VarChar(255)
+  avatar        String?
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  references    BibReference[]
+  criteria      Criteria[]
+  subscriptions Subscription[]
+  payments      Payment[]
 
   @@map("users")
+}
+
+model Plan {
+  id              BigInt         @id @default(autoincrement()) @map("plan_id")
+  name            String
+  description     String
+  price           Decimal        @default(0) @db.Decimal(10, 2)
+  currency        String         @default("USD")
+  billingInterval String         @default("monthly") @map("billing_interval") @db.VarChar(50)
+  trialDays       Int            @default(0) @map("trial_days")
+  isActive        Boolean        @default(true) @map("is_active")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  features        PlanFeature[]
+  subscriptions   Subscription[]
+
+  @@map("plans")
+}
+
+model PlanFeature {
+  id          BigInt   @id @default(autoincrement()) @map("plan_feature_id")
+  planId      BigInt   @map("plan_id")
+  featureKey  String   @map("feature_key")
+  featureName String   @map("feature_name")
+  limitValue  Int      @map("limit_value")
+  limitUnit   String   @map("limit_unit")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  Plan        Plan     @relation(fields: [planId], references: [id])
+
+  @@map("plan_features")
+}
+
+enum StatusSubscription {
+  trialing
+  active
+  past_due
+  canceled
+  expired
+}
+
+model Subscription {
+  id                 BigInt              @id @default(autoincrement()) @map("user_subscription_id")
+  userId             BigInt              @map("user_id")
+  planId             BigInt              @map("plan_id")
+  status             StatusSubscription  @map("status")
+  startedAt          DateTime            @map("started_at") @db.Timestamptz(6)
+  trialEndsAt        DateTime            @map("trial_ends_at") @db.Timestamptz(6)
+  currentPeriodStart DateTime            @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd   DateTime            @map("current_period_end") @db.Timestamptz(6)
+  cancelAt           DateTime            @map("cancel_at") @db.Timestamptz(6)
+  canceledAt         DateTime            @map("canceled_at") @db.Timestamptz(6)
+  endedAt            DateTime            @map("ended_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  User               User                @relation(fields: [userId], references: [id])
+  Plan               Plan                @relation(fields: [planId], references: [id])
+  subscriptionUsages SubscriptionUsage[]
+  subscriptionEvents SubscriptionEvent[]
+  payments           Payment[]
+
+  @@index([userId])
+  @@index([planId])
+  @@map("user_subscriptions")
+}
+
+model SubscriptionUsage {
+  id             BigInt       @id @default(autoincrement()) @map("usage_id")
+  subscriptionId BigInt       @map("subscription_id")
+  featureKey     String       @map("feature_key")
+  usedValue      Int          @map("used_value")
+  limitValue     Int          @map("limit_value")
+  periodStart    DateTime     @map("period_start") @db.Timestamptz(6)
+  periodEnd      DateTime     @map("period_end") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  Subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+  @@map("subscription_usages")
+}
+
+model SubscriptionEvent {
+  id             BigInt       @id @default(autoincrement()) @map("event_id")
+  subscriptionId BigInt       @map("subscription_id")
+  eventType      String       @map("event_type")
+  oldValue       Json?
+  newValue       Json?
+  description    String       @map("description")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  Subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+  @@map("subscription_events")
+}
+
+model Payment {
+  id                    BigInt        @id @default(autoincrement()) @map("payment_id")
+  userId                BigInt        @map("user_id")
+  subscriptionId        BigInt?       @map("subscription_id")
+  stripeInvoiceId       String?       @unique
+  stripePaymentIntentId String?       @unique
+  stripeChargeId        String?       @unique
+  amount                Int
+  currency              String        @default("usd")
+  status                PaymentStatus @default(PENDING)
+  paidAt                DateTime?
+  failedAt              DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription          Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+model WebhookLog {
+  id            BigInt    @id @default(autoincrement()) @map("webhook_log_id")
+  stripeEventId String    @unique
+  eventType     String
+  payload       Json
+  processed     Boolean   @default(false)
+  processedAt   DateTime?
+  errorMessage  String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([eventType])
+  @@index([processed])
+  @@index([createdAt])
 }
 
 model TypeCriteria {

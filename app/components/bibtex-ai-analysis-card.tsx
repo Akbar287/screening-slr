@@ -368,7 +368,7 @@ export function BibtexAiAnalysisCard({
 
             <div className="relative h-3 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-zinc-800/80">
               <motion.div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-500 via-emerald-500 to-lime-500"
+                className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-cyan-500 via-emerald-500 to-lime-500"
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
               />

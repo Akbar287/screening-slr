@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { ensureUserSubscription } from "@/lib/subscription";
 
 type RegisterPayload = {
   nama?: string;
@@ -43,14 +44,33 @@ export async function POST(request: Request) {
 
   const hashedPassword = await hashPassword(password);
 
-  await prisma.user.create({
-    data: {
-      nama: nama.length > 0 ? nama : null,
-      username,
-      password: hashedPassword,
-    },
-    select: { id: true },
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const subscriptionDb = tx as unknown as Pick<typeof prisma, "plan" | "subscription">;
+
+      const createdUser = await tx.user.create({
+        data: {
+          nama: nama.length > 0 ? nama : null,
+          username,
+          password: hashedPassword,
+        },
+        select: { id: true },
+      });
+
+      await ensureUserSubscription({
+        userId: createdUser.id,
+        db: subscriptionDb,
+      });
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Registrasi gagal karena kesalahan server.";
+
+    return NextResponse.json(
+      { message },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json(
     { message: "Registrasi berhasil." },
