@@ -3,6 +3,7 @@ import { PT_Serif } from "next/font/google";
 import { getServerSession } from "next-auth";
 import Script from "next/script";
 import NextTopLoader from "nextjs-toploader";
+import { FloatingAiChatbot } from "@/app/components/floating-ai-chatbot";
 import { PageMotion } from "@/app/components/page-motion";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import { authOptions } from "@/lib/auth-options";
@@ -59,12 +60,11 @@ export default async function RootLayout({
           {themeInitScript}
         </Script>
         <ThemeToggle />
+        {isAuthenticated ? <FloatingAiChatbot /> : null}
         <PageMotion className="flex-1">{children}</PageMotion>
         {isAuthenticated ? (
-          <footer className="relative overflow-hidden border-t border-white/55 bg-linear-to-b from-sky-200/45 via-sky-100/35 to-white/25 px-6 py-3 text-center text-sm text-slate-800/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_-8px_24px_rgba(56,189,248,0.2)] dark:border-sky-300/20 dark:from-sky-900/35 dark:via-sky-900/20 dark:to-slate-900/10 dark:text-slate-200/90 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_-10px_30px_rgba(14,116,144,0.35)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/90 dark:bg-white/30" />
-            <div className="pointer-events-none absolute left-1/2 top-0 h-10 w-2/3 -translate-x-1/2 rounded-full bg-cyan-100/45 blur-xl dark:bg-cyan-400/15" />
-            <p className="relative z-10">
+          <footer className="border-t border-slate-200/75 bg-white/70 px-6 py-3 text-center text-sm text-slate-800 backdrop-blur-md supports-[backdrop-filter]:bg-white/65 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-200">
+            <p>
               Made with <span className="text-red-500">♥</span> by{" "}
               <Link
                 href="https://www.linkedin.com/in/muhammad-akbar-596803201/"

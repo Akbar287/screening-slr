@@ -30,6 +30,9 @@
     "postcss": "^8.5.15",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
     "stripe": "^22.2.0",
     "tailwind-merge": "^3.6.0",
     "tsx": "^4.22.3"
